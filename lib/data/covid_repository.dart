@@ -7,7 +7,7 @@ abstract class CovidRepository {
   Future<Country> fetchCountryData({required String countryName});
 }
 
-class Repository implements CovidRepository{
+class Repository implements CovidRepository {
 
   final _apiService = ApiService();
 

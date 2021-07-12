@@ -1,22 +1,40 @@
+import 'dart:io';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_covidapp_bloc_test/bloc/bloc.dart';
+import 'package:flutter_covidapp_bloc_test/data/api_service.dart';
+import 'package:flutter_covidapp_bloc_test/data/covid_repository.dart';
+import 'package:flutter_covidapp_bloc_test/data/models/global.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockGlobalBloc extends MockBloc<GlobalEvent, GlobalState> implements GlobalBloc {}
-class FakeGlobalEvent extends Fake implements GlobalEvent {}
-class FakeGlobalState extends Fake implements GlobalState {}
+class MockCovidRepository extends Mock implements Repository {}
 
 void main() {
-  MockGlobalBloc mockGlobalBloc = MockGlobalBloc();
+  MockCovidRepository mockCovidRepository = MockCovidRepository();
 
-  setUpAll(() {
-    registerFallbackValue<GlobalEvent>(FakeGlobalEvent());
-    registerFallbackValue<GlobalState>(FakeGlobalState());
-  });
+  setUp(() {});
 
-  test("Global Bloc Test", () {
-    whenListen(mockGlobalBloc, Stream.fromIterable([const GlobalInitial(),const GlobalLoading()]));
-    expectLater(mockGlobalBloc, emitsInOrder([const GlobalInitial(), const GlobalLoading()]));
+  group("Get Global Data", () {
+    const global = Global(cases: 1, deaths: 1, recovered: 1);
+
+    blocTest<GlobalBloc, GlobalState>("emits success states",
+        build: () {
+          when(mockCovidRepository.fetchGlobalData)
+              .thenAnswer((invocation) async => global);
+          return GlobalBloc(mockCovidRepository);
+        },
+        act: (bloc) => bloc.add(const GetGlobalData()),
+        expect: () => [const GlobalLoading(), const GlobalDataLoaded(global)]);
+
+    blocTest<GlobalBloc, GlobalState>(
+      "emits No Internet states",
+      build: () {
+        when(mockCovidRepository.fetchGlobalData).thenThrow(InvalidFormatException);
+        return GlobalBloc(mockCovidRepository);
+      },
+      act:(bloc) => bloc.add(const GetGlobalData()),
+      expect: () => [const GlobalLoading(), const GlobalError("message")]
+    );
   });
 }
